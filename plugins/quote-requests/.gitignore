@@ -1,0 +1,9 @@
+/vendor/
+/tests/e2e/node_modules/
+*.zip
+.superpowers/
+*.tgz
+/tests/e2e/.settings-screen.html
+/tests/e2e/.settings-post.json
+.phpunit.cache/
+.phpunit.result.cache

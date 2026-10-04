@@ -1,0 +1,63 @@
+/*!
+ * Quote Requests
+ *
+ * Copyright (C) 2026 Unisolva for Information Technology and App Development L.L.C.
+ *
+ * This program is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software Foundation;
+ * either version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ */
+/* The settings screen. */
+
+/* The admin button styles would show a hidden button. */
+.qr-settings [hidden] { display: none !important; }
+
+/* What is only needed without the script: order numbers, Remove tick boxes, the hint. */
+.qr-settings.qr-js .qr-nojs { display: none; }
+
+.qr-settings select[multiple] { max-width: 100%; }
+
+.qr-fields { margin: 8px 0 12px; }
+.qr-fields th,
+.qr-fields td { vertical-align: top; }
+.qr-fields .qr-col-label { width: 24%; }
+.qr-fields .qr-col-type { width: 20%; }
+.qr-fields .qr-col-help { width: 22%; }
+.qr-fields .qr-col-required,
+.qr-fields .qr-col-show { width: 8%; }
+.qr-fields input[type="text"],
+.qr-fields select,
+.qr-fields textarea { box-sizing: border-box; width: 100%; max-width: 100%; }
+.qr-fields .qr-key { margin: 4px 0 0; color: #50575e; }
+.qr-fields .qr-key input[type="text"] { width: 14em; }
+.qr-fields .qr-options { margin-top: 6px; }
+.qr-fields .qr-options label { display: block; margin-bottom: 2px; }
+.qr-fields .qr-fixed { color: #50575e; }
+.qr-fields .qr-col-order .button { margin: 0 4px 4px 0; }
+.qr-fields .qr-col-order .button-link { padding: 4px 0; }
+.qr-fields .qr-remove { display: block; margin-top: 4px; }
+.qr-fields .qr-field-error { display: block; margin-top: 2px; color: #b32d2e; }
+.qr-fields [aria-invalid="true"] { border-color: #b32d2e; box-shadow: 0 0 0 1px #b32d2e; }
+.qr-fields button[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+.qr-fields-foot #qr-fields-count { margin-left: 8px; color: #50575e; }
+
+/* Narrow screens: one field per block, each cell under its column name. */
+@media screen and (max-width: 960px) {
+	.qr-fields thead { display: none; }
+	.qr-fields,
+	.qr-fields tbody,
+	.qr-fields tr,
+	.qr-fields td { display: block; width: auto; }
+	.qr-fields .qr-col-label,
+	.qr-fields .qr-col-type,
+	.qr-fields .qr-col-help,
+	.qr-fields .qr-col-required,
+	.qr-fields .qr-col-show { width: auto; }
+	.qr-fields td { padding: 6px 10px; }
+	.qr-fields td::before { content: attr(data-qr-col); display: block; margin-bottom: 2px; font-weight: 600; }
+	.qr-fields .qr-key input[type="text"] { width: 100%; }
+}

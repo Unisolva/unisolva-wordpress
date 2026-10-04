@@ -1,0 +1,66 @@
+name: Quote Requests
+
+on:
+  push:
+    paths:
+      - 'plugins/quote-requests/**'
+      - '.github/workflows/quote-requests.yml'
+  pull_request:
+    paths:
+      - 'plugins/quote-requests/**'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: plugins/quote-requests
+
+jobs:
+  php:
+    name: PHPUnit (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.1'
+            phpunit: '10'
+          - php: '8.3'
+            phpunit: '11'
+          - php: '8.4'
+            phpunit: '11'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: phpunit:${{ matrix.phpunit }}
+          coverage: none
+      - run: find . -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+      - run: phpunit -c phpunit.xml.dist
+
+  phpcs:
+    name: Coding standard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer, cs2pr
+          coverage: none
+      - run: |
+          composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer global require --no-interaction --no-progress wp-coding-standards/wpcs:^3 phpcompatibility/phpcompatibility-wp:^2
+      - run: ~/.composer/vendor/bin/phpcs --standard=phpcs.xml.dist -q --report=checkstyle | cs2pr
+
+  js:
+    name: JavaScript tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: node --test tests/js/*.test.js
