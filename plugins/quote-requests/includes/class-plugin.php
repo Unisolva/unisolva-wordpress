@@ -42,6 +42,25 @@ final class Plugin {
 			$class = __NAMESPACE__ . '\\' . $unit;
 			$class::register();
 		}
+		// The Elementor Pro adapter. Its class is read from its file when Elementor Pro fires one of these hooks: on a
+		// site without Elementor Pro nothing of the adapter is loaded. Should other code fire these hook names there,
+		// the callbacks return at once, because the adapter cannot exist without the class it extends.
+		add_action( 'elementor_pro/forms/actions/register', self::elementor( 'add' ) );
+		add_action( 'elementor_pro/forms/validation', self::elementor( 'validate' ), 20, 2 );
+	}
+
+	/**
+	 * A callback for a hook of Elementor Pro's forms that calls the adapter only when Elementor Pro's form classes exist.
+	 *
+	 * @param string $method The static method of Elementor_Action to call with the arguments of the hook.
+	 */
+	private static function elementor( string $method ): \Closure {
+		return static function ( ...$args ) use ( $method ): void {
+			if ( ! class_exists( 'ElementorPro\Modules\Forms\Classes\Action_Base' ) ) {
+				return;
+			}
+			call_user_func_array( array( __NAMESPACE__ . '\\Elementor_Action', $method ), $args );
+		};
 	}
 
 	public static function activate(): void {

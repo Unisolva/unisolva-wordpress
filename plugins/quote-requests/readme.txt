@@ -4,7 +4,7 @@ Tags: request a quote, quote, catalog mode, woocommerce, b2b
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.2.1
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -25,6 +25,9 @@ Quote Requests turns a WooCommerce catalog into a quote request site.
 * Works without JavaScript, works with page caching, accessible (labels, inline errors, 44 px targets).
 * Spam protection without third-party services: signed form token, honeypot, per-IP rate limit.
 * Filters `quote_requests_fields` and `quote_requests_validate` and action `quote_requests_created` for your own code and CRM integrations.
+* Open to other forms: the function `quote_requests_submit()` stores a request from any form, a hidden input named `quote_requests_items` carries the quote list, and the Form widget of Elementor Pro gets a ready-made "Quote request" action.
+
+Three ways to extend it: the settings screen, the hooks (docs/hooks.md) and the entry point for other forms (docs/integrations.md). Both documents are in the plugin folder.
 
 == Installation ==
 
@@ -58,10 +61,22 @@ Only if the site is behind a proxy or CDN that sets the visitor address. Without
 = My quote page is cached. What do I do after changing the settings? =
 Purge the page cache.
 
+= Can another form send quote requests, for example an Elementor form? =
+Yes. With Elementor Pro, add the action "Quote request" to the Form widget under Actions After Submit and give the form fields the IDs name, phone, email, company, region and message; a Hidden field with the ID quote_requests_items carries the quote list. Remove Elementor's Email action to avoid two emails. For any other form, call `quote_requests_submit()` from your own code. That form is responsible for its own spam protection. See docs/integrations.md.
+
 = How do I put the quote list link in my header? =
 Use the shortcode `[quote_requests_link]` or the template tag `quote_requests_link()`.
 
 == Changelog ==
+
+= 0.3.0 =
+* Added: `quote_requests_submit()`, a function that stores a quote request another form collected, with the same checks, record, emails and `quote_requests_created` action as the built-in form. The calling form brings its own spam protection. It can hand over the page it was on and the text of its own consent tick, so the record shows what the visitor agreed to.
+* Added: a hidden input named `quote_requests_items` in any form is filled with the visitor's quote list; `quote_requests_parse_items()` reads it; the browser event `quote_requests:sent` empties the list.
+* Added: the action "Quote request" for the Form widget of Elementor Pro. Fields are matched by their ID and errors appear beside the Elementor fields. Elementor keeps its own copy of each submission and can send its own email: remove its Email action to avoid two emails. The Elementor V4 atomic form is not supported.
+* Added: each request records what sent it (form, elementor or your own label), shown as "Source" in the admin and included in the personal data export. `Store::get()` returns it as `source`.
+* Added: docs/integrations.md.
+* Changed: a callback on `quote_requests_created` that throws no longer turns a stored request into a failure for the visitor. With WP_DEBUG on, the failure is written to the PHP error log.
+* Fixed: the default consent text names the site in plain text when the site title contains a character such as & or an apostrophe.
 
 = 0.2.1 =
 * Added: links under the thank-you text after a request is sent: the shop page (as a button) and the home page. A switch and two labels on the settings screen, under Texts. On by default.
@@ -95,6 +110,9 @@ Use the shortcode `[quote_requests_link]` or the template tag `quote_requests_li
 * First release.
 
 == Upgrade Notice ==
+
+= 0.3.0 =
+No data upgrade and no change to the built-in form. New: other forms can send quote requests, with a ready-made action for the Elementor Pro Form widget. If your pages are cached, purge the cache so visitors get the new script.
 
 = 0.2.1 =
 No data upgrade. After a request is sent the visitor now sees links to the shop page and the home page; turn them off under Texts on the settings screen if you do not want them. If your quote page is cached, purge the cache so visitors get the new script and style.

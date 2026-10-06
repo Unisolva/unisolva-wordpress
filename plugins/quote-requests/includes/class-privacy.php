@@ -93,6 +93,10 @@ final class Privacy {
 						'name'  => 'visitor',
 						'value' => wp_json_encode( $q['client'] ),
 					);
+					$fields[] = array( // Technical, like the visitor details it follows: which form sent the request.
+						'name'  => 'source',
+						'value' => $q['source'],
+					);
 					$fields[] = array(
 						'name'  => 'consent',
 						'value' => wp_json_encode( $q['consent'] ),

@@ -44,18 +44,20 @@ final class Thanks {
 		}
 		$built = self::defaults( self::shop_url(), home_url( '/' ), $s['thanks_continue_label'], $s['thanks_home_label'] );
 		// The request is stored and mailed by now: a callback that fails must not turn the answer into an error.
+		$depth = Hook_Guard::depth();
 		try {
 			/**
 			 * Filters the links shown under the thank-you text after a quote request is sent.
 			 *
 			 * @param array $built List of array( 'key' => string, 'url' => string, 'label' => string ). The first link is shown as a button.
 			 *                     The result is cleaned (see harden()). A result that is not an array is ignored and the list stays as it was passed in.
-			 *                     A callback that throws is ignored in the same way.
+			 *                     A callback that throws is ignored in the same way, and logged when WP_DEBUG is on.
 			 * @param array $quote The new request as Quote_Requests\Store::get() returns it.
 			 */
 			$filtered = apply_filters( 'quote_requests_thanks_links', $built, $quote );
 		} catch ( \Throwable $e ) {
 			$filtered = $built;
+			Hook_Guard::failed( 'quote_requests_thanks_links', (int) ( is_scalar( $quote['id'] ?? null ) ? $quote['id'] : 0 ), $e, $depth );
 		}
 		return self::harden( is_array( $filtered ) ? $filtered : $built );
 	}

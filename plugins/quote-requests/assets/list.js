@@ -108,5 +108,36 @@
     });
     return out;
   }
-  return { KEY: KEY, TTL_MS: TTL_MS, MAX_LINES: MAX_LINES, MAX_QTY: MAX_QTY, MAX_LINKS: MAX_LINKS, empty: empty, read: read, write: write, add: add, setQty: setQty, remove: remove, merge: merge, count: count, qtyOf: qtyOf, safeLinks: safeLinks };
+  // The quote list for other forms. A hidden input with this name, or with a name that ends in [quote_requests_items]
+  // (form builders wrap the field ID, for example form_fields[quote_requests_items]), is filled with the list as JSON.
+  var ITEMS_INPUT = 'quote_requests_items';
+  var ITEMS_SELECTOR = 'input[type="hidden"][name="' + ITEMS_INPUT + '"],input[type="hidden"][name$="[' + ITEMS_INPUT + ']"]';
+  function isItemsInput(name) {
+    if (typeof name !== 'string') return false;
+    var wrapped = '[' + ITEMS_INPUT + ']';
+    return name === ITEMS_INPUT || (name.length > wrapped.length && name.slice(-wrapped.length) === wrapped);
+  }
+  // The list as the server reads it: [{"id":12,"qty":3}]. Anything that is not a list gives "[]".
+  function itemsJson(list) {
+    var out = [];
+    var items = list && Array.isArray(list.items) ? list.items : [];
+    items.forEach(function (i) {
+      var n = toId(i && i.id);
+      if (n && out.length < MAX_LINES) out.push({ id: n, qty: toQty(i.qty) });
+    });
+    return JSON.stringify(out);
+  }
+  // Writes the list into each items input of an array or a NodeList. Returns how many values changed.
+  function fillInputs(inputs, list) {
+    var json = itemsJson(list);
+    var changed = 0;
+    for (var i = 0; inputs && i < inputs.length; i++) {
+      var input = inputs[i];
+      if (!input || !isItemsInput(input.name) || input.value === json) continue;
+      input.value = json;
+      changed++;
+    }
+    return changed;
+  }
+  return { KEY: KEY, TTL_MS: TTL_MS, MAX_LINES: MAX_LINES, MAX_QTY: MAX_QTY, MAX_LINKS: MAX_LINKS, empty: empty, read: read, write: write, add: add, setQty: setQty, remove: remove, merge: merge, count: count, qtyOf: qtyOf, safeLinks: safeLinks, ITEMS_INPUT: ITEMS_INPUT, ITEMS_SELECTOR: ITEMS_SELECTOR, isItemsInput: isItemsInput, itemsJson: itemsJson, fillInputs: fillInputs };
 });

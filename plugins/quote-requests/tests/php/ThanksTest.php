@@ -206,6 +206,33 @@ final class ThanksTest extends TestCase {
 		$this->assertSame( $built, Thanks::links( $this->quote() ), 'an error' );
 	}
 
+	public function test_a_callback_that_throws_is_logged_when_debugging_is_on_and_the_running_hooks_are_put_back(): void {
+		$lines                         = array();
+		Quote_Requests\Hook_Guard::$debug = true;
+		Quote_Requests\Hook_Guard::$log   = static function ( string $line ) use ( &$lines ): void {
+			$lines[] = $line;
+		};
+		$GLOBALS['wp_current_filter']  = array( 'outer_hook' );
+		add_filter(
+			'quote_requests_thanks_links',
+			static function (): array {
+				throw new RuntimeException( 'No links today' );
+			}
+		);
+		try {
+			$links = Thanks::links( $this->quote() );
+			$left  = $GLOBALS['wp_current_filter'];
+		} finally {
+			Quote_Requests\Hook_Guard::$debug = null;
+			Quote_Requests\Hook_Guard::$log   = null;
+			$GLOBALS['wp_current_filter']  = array();
+		}
+		$this->assertSame( array( $this->link( 'home', 'https://example.test/', 'Back to home page' ) ), $links, 'the built links stay' );
+		$this->assertCount( 1, $lines );
+		$this->assertStringContainsString( 'quote_requests_thanks_links failed for quote 5. RuntimeException: No links today', $lines[0] );
+		$this->assertSame( array( 'outer_hook' ), $left );
+	}
+
 	// ---- harden(): what a list may hold. ----
 
 	public function test_harden_drops_entries_without_a_usable_url_or_label(): void {

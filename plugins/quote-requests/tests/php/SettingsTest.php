@@ -400,6 +400,24 @@ final class SettingsTest extends TestCase {
 		$this->assertStringContainsString( 'Test Site may use these details', Settings::consent_text() );
 	}
 
+	public function test_consent_text_default_uses_the_site_name_as_plain_text(): void {
+		$GLOBALS['qr_test_blogname'] = 'Fish &amp; Chips&#039; Shop'; // What WordPress stores for: Fish & Chips' Shop.
+		try {
+			$this->assertStringContainsString( 'I agree that Fish & Chips\' Shop may use these details', Settings::consent_text() );
+		} finally {
+			unset( $GLOBALS['qr_test_blogname'] );
+		}
+	}
+
+	public function test_consent_text_of_a_site_without_a_title_names_the_host(): void {
+		$GLOBALS['qr_test_blogname'] = '';
+		try {
+			$this->assertStringContainsString( 'I agree that example.test may use these details', Settings::consent_text() );
+		} finally {
+			unset( $GLOBALS['qr_test_blogname'] );
+		}
+	}
+
 	public function test_recipients_fall_back_to_admin_email_when_none_is_valid(): void {
 		$out = Settings::sanitize( array( 'recipients' => 'sales@@example, not-an-address' ) );
 		$this->assertSame( array( 'admin@example.test' ), $out['recipients'] );

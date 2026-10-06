@@ -81,7 +81,16 @@ final class Store {
 		return (int) ( microtime( true ) * 1000 ) % 100000; // Never reached in practice; keeps a unique-looking number instead of failing the request.
 	}
 
-	public static function create( array $contact, array $items, array $consent, array $client ): int {
+	/**
+	 * Stores one request and returns its post ID, or 0 when it could not be stored.
+	 *
+	 * @param array  $contact The cleaned values, as Validator::contact() returns them.
+	 * @param array  $items   The product lines, as Validator::items() returns them.
+	 * @param array  $consent given, time, text and privacy_url.
+	 * @param array  $client  The visitor details, or an empty array when they are not stored.
+	 * @param string $source  The cleaned label of what sent the request: "form" for the built-in form (see Submission::source_label()).
+	 */
+	public static function create( array $contact, array $items, array $consent, array $client, string $source = Submission::SOURCE_FORM ): int {
 		$year = (int) gmdate( 'Y' );
 		$ref  = Reference::format( $year, self::next_number( $year ) );
 		$id   = wp_insert_post(
@@ -107,6 +116,8 @@ final class Store {
 			'_qr_region_name'    => $contact['region_name'] ?? '',
 			'_qr_message'        => $contact['message'],
 			'_qr_crm_state'      => 'pending',
+			// What sent the request. Not in _qr_source: that holds the pages of the visit, and is empty when visitor details are not stored.
+			'_qr_source_label'   => $source,
 		);
 		foreach ( $meta as $k => $v ) {
 			update_post_meta( $id, $k, wp_slash( (string) $v ) );
@@ -150,6 +161,7 @@ final class Store {
 			'client'         => array_merge( $j( '_qr_client' ), $src ),
 			'mail'           => $j( '_qr_mail' ),
 			'crm_state'      => $m( '_qr_crm_state' ),
+			'source'         => Submission::source_label( $m( '_qr_source_label' ) ), // A record from before 0.3 has no label: the built-in form sent it.
 		);
 	}
 

@@ -103,6 +103,21 @@ final class Client_Info {
 		return substr( $path, 0, 500 );
 	}
 
+	/**
+	 * The page a request was sent from, when code hands it over (see quote_requests_submit()): the path and query of an
+	 * http or https address on the host of this site, in the shape same_site_path() stores. Anything else gives an empty string.
+	 *
+	 * @param mixed  $url  The address of the page.
+	 * @param string $home The address of the site.
+	 */
+	public static function page( $url, string $home ): string {
+		$url = is_string( $url ) ? trim( $url ) : '';
+		if ( 1 !== preg_match( '#^https?://[^/\\\\\s]#i', $url ) ) {
+			return '';
+		}
+		return self::same_site_path( $url, $home );
+	}
+
 	public static function referrer( string $url, string $home ): string {
 		$u = wp_parse_url( $url );
 		$h = wp_parse_url( $home );

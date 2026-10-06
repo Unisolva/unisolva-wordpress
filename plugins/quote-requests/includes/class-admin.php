@@ -219,6 +219,8 @@ final class Admin {
 				__( 'Landing page', 'quote-requests' )   => $c['landing'] ?? '',
 				__( 'Referrer', 'quote-requests' )       => $c['referrer'] ?? '',
 				__( 'User agent', 'quote-requests' )     => $c['user_agent'] ?? '',
+				// What sent the request: "form" for the built-in form, otherwise the label the calling code gave.
+				__( 'Source', 'quote-requests' )         => $q['source'],
 			)
 		);
 		echo '<h3>' . esc_html( self::show_crm() ? __( 'Consent, email and CRM', 'quote-requests' ) : __( 'Consent and email', 'quote-requests' ) ) . '</h3>';

@@ -2,6 +2,30 @@
 
 All notable changes to Quote Requests are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the version numbers follow [Semantic Versioning](https://semver.org/).
 
+## 0.3.0 - 2026-10-07
+
+### Added
+
+- Quote requests from other forms. The function `quote_requests_submit()` stores a request that another form collected: a form made with a form plugin, a form in a popup, or your own code. The request goes through the same steps as one of the built-in form: the rate limit, the checks against your form fields, the product checks, the record, the emails and the `quote_requests_created` action. The function does not run the spam checks of the built-in form (its signed token and its honeypot), so the form that calls it brings its own spam protection. Its answer carries the post ID and the reference of the stored request, and `dropped`, the number of product lines that were left out (for example a product that no longer exists).
+- The calling form can hand over what only it knows, as optional arguments of `quote_requests_submit()`: `page`, the address of the page the form was on, stored as "Sent from page" when it is an address of your site; and `consent_text` and `privacy_url`, the text of that form's consent tick and the privacy page it links to. They are stored in the consent record of the request, so the record shows what the visitor agreed to. Without them the record names the consent text and the privacy page of the settings, as for the built-in form.
+- The quote list in any form. A hidden input named `quote_requests_items`, in any form on any page, is filled by the plugin's script with the visitor's list, also when the form appears later, in a popup. The function `quote_requests_parse_items()` reads the posted value. The browser event `quote_requests:sent` on `document` empties the list after a stored request.
+- An action for the Form widget of Elementor Pro, "Quote request", under Actions After Submit. Form fields are matched to the fields of a quote request by their ID. Errors appear beside the Elementor fields, a refused request runs none of the form's other actions, and the visitor's list is emptied after a sent form. The text of the form's Acceptance field is stored as the consent text of the request, and the page the form was on as the page the request was sent from. Without Elementor Pro nothing of this is loaded. Note the cost: Elementor keeps its own copy of each submission, and its Email action sends its own email. Remove the Email action from the form to avoid two emails.
+- Each request records what sent it: `form` for the built-in form, `elementor` for the Elementor Pro action, or the label the calling code gives. It is shown as "Source" with the visitor details of a request, it is part of the personal data export, and code reads it as the `source` key of `Quote_Requests\Store::get()`. Requests stored by earlier versions read as `form`.
+- `docs/integrations.md`: the function with its arguments and answers, the hidden input and the browser event, the Elementor Pro set-up step by step, and a complete adapter for another form plugin in about 30 lines.
+
+### Changed
+
+- A callback on the `quote_requests_created` action that throws an exception no longer turns a stored request into a failure. The request is stored and mailed by then, so the visitor gets the answer of a sent request. Until now the visitor saw an error and was likely to send the same request again. With `WP_DEBUG` on, the failure is written to the PHP error log: one line with the action, the ID of the request, and the class and message of what was thrown. The same holds for a callback on the `quote_requests_thanks_links` filter.
+- `Quote_Requests\Store::get()`, and so the `quote_requests_created` action, returns one more key, `source`. The existing keys are unchanged, and so are the answers of the REST route.
+
+### Fixed
+
+- The default consent text named the site with HTML entities when the site title contains a character such as `&` or an apostrophe: the consent text stored with a request, and so the personal data export, held `&amp;` in place of `&`. The site name is now plain text there. A site without a title is named by the host of its address.
+
+### Not supported
+
+- The Elementor V4 atomic form. It is a separate module of Elementor Pro and does not fire the hooks the action for the Form widget is built on. See `docs/integrations.md`.
+
 ## 0.2.1 - 2026-10-06
 
 ### Added

@@ -280,12 +280,20 @@ final class Validator {
 				++$dropped;
 				continue;
 			}
-			$id = (int) ( $row['id'] ?? 0 );
+			// A row without a quantity counts as one. An id or a quantity that is a list, an object or null is no number:
+			// casting it would give a wrong product (a list becomes 1) or a warning (an object).
+			$row_id  = $row['id'] ?? null;
+			$row_qty = array_key_exists( 'qty', $row ) ? $row['qty'] : 1;
+			if ( ! is_scalar( $row_id ) || ! is_scalar( $row_qty ) ) {
+				++$dropped;
+				continue;
+			}
+			$id = (int) $row_id;
 			if ( $id <= 0 ) {
 				++$dropped;
 				continue;
 			}
-			$qty[ $id ] = ( $qty[ $id ] ?? 0 ) + max( 1, (int) ( $row['qty'] ?? 1 ) );
+			$qty[ $id ] = ( $qty[ $id ] ?? 0 ) + max( 1, (int) $row_qty );
 		}
 		$items = array();
 		foreach ( $qty as $id => $q ) {
@@ -305,6 +313,49 @@ final class Validator {
 			'items'   => $items,
 			'dropped' => $dropped,
 		);
+	}
+
+	/** The longest text items_from_json() reads. A full list of MAX_LINES lines is far shorter. */
+	public const MAX_ITEMS_JSON = 8192;
+
+	/**
+	 * Reads the quote list as a hidden input named quote_requests_items carries it: JSON such as [{"id":12,"qty":3}].
+	 *
+	 * The text may still have the slashes WordPress adds to posted values. Anything that is not such a list gives an
+	 * empty list, and a row that is not an object with a positive whole "id" is left out: never an error or a notice.
+	 * A quantity that is missing or not a whole number counts as 1 and is kept between 1 and MAX_QTY. At most
+	 * MAX_LINES rows are kept. Whether the products exist is checked later, by items().
+	 *
+	 * @param mixed $raw The posted text, or the list when it is already decoded.
+	 * @return array List of array( 'id' => int, 'qty' => int ).
+	 */
+	public static function items_from_json( $raw ): array {
+		$list = $raw;
+		if ( is_string( $raw ) ) {
+			if ( strlen( $raw ) > self::MAX_ITEMS_JSON ) {
+				return array();
+			}
+			$list = json_decode( $raw, true );
+			if ( ! is_array( $list ) ) {
+				$list = json_decode( stripslashes( $raw ), true ); // A value taken from $_POST as WordPress holds it.
+			}
+		}
+		$whole = static fn( $v ): bool => is_int( $v ) || ( is_string( $v ) && ctype_digit( $v ) );
+		$out   = array();
+		foreach ( is_array( $list ) ? $list : array() as $row ) {
+			if ( count( $out ) >= self::MAX_LINES ) {
+				break;
+			}
+			if ( ! is_array( $row ) || ! $whole( $row['id'] ?? null ) || (int) $row['id'] <= 0 ) {
+				continue;
+			}
+			$qty   = $row['qty'] ?? 1;
+			$out[] = array(
+				'id'  => (int) $row['id'],
+				'qty' => $whole( $qty ) ? max( 1, min( self::MAX_QTY, (int) $qty ) ) : 1,
+			);
+		}
+		return $out;
 	}
 
 	public static function clean_phone( string $phone ): string {

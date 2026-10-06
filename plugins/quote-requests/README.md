@@ -10,6 +10,7 @@ Quote Requests lets the visitors of a WooCommerce shop collect products into a q
 - Catalog mode: hide prices, remove "Add to cart", send the cart and checkout to the quote page.
 - Works without JavaScript, works with page caching.
 - Spam protection without third-party services.
+- Open to other forms: a function that stores a request from any form, a hidden input that carries the quote list, and a ready-made action for the Elementor Pro Form widget.
 - No requests to outside services.
 
 ## Requirements
@@ -144,6 +145,8 @@ There is no CAPTCHA and no outside service. The plugin uses four checks:
 3. A rate limit. At most 5 stored requests per visitor address per hour by default; you can change it. The count is kept as a keyed hash of the address, not the address itself, and old counts are deleted daily.
 4. Server-side checks. Every field is checked again on the server, the products are read from your catalog (a product that does not exist or is not published is dropped), and a request holds at most 50 product lines with a quantity of at most 9999 each.
 
+Checks 1 and 2 belong to the built-in form. A request that another form sends through `quote_requests_submit()` or the Elementor Pro action passes checks 3 and 4 only, and relies on the spam protection of that form. See [docs/integrations.md](docs/integrations.md).
+
 The quote page asks search engines not to index it.
 
 ## What the plugin stores
@@ -154,6 +157,7 @@ For each request, the plugin creates one record (a private post type, visible on
 - the products and quantities, with the product name, SKU and category as they were at the time;
 - the consent: whether it was given, when, the text shown and the privacy page address;
 - the reference, such as `Q-2026-0001`;
+- what sent the request: the built-in form, the Elementor Pro action or another form;
 - the result of each email (handed over, failed or skipped).
 
 When "Store visitor details" is on (the default), each record also holds the IP address, the browser's user agent string, the browser name and version, the operating system, the device type, the preferred language, the time zone offset, the page the request was sent from, the first page of the visit, and the external site the visitor came from (its address and path, without the query string). Turn the setting off and none of these are stored.
@@ -172,10 +176,20 @@ The plugin adds a suggested section to your privacy policy text (Settings > Priv
 There are three ways, from simple to flexible:
 
 1. Settings. Most sites need nothing more: fields, rules, regions, texts and catalog mode are all set on the settings screen.
-2. Hooks. Filter `quote_requests_fields` changes the form fields from code, filter `quote_requests_validate` adds your own checks, action `quote_requests_created` runs code after a request is stored, for example to pass it to another system, and filter `quote_requests_thanks_links` changes the links shown after a request is sent. The constant `QUOTE_REQUESTS_HOLD_UPGRADE` postpones the data upgrade after an update from 0.1.
-3. Template tags, shortcodes and CSS custom properties, to place the buttons and the link and to match your colours.
+2. Hooks. Filter `quote_requests_fields` changes the form fields from code, filter `quote_requests_validate` adds your own checks, action `quote_requests_created` runs code after a request is stored, for example to pass it to another system, and filter `quote_requests_thanks_links` changes the links shown after a request is sent. The constant `QUOTE_REQUESTS_HOLD_UPGRADE` postpones the data upgrade after an update from 0.1. Template tags, shortcodes and CSS custom properties place the buttons and the link and match your colours. All of them, with examples, are in [docs/hooks.md](docs/hooks.md).
+3. The entry point. The function `quote_requests_submit()` stores a quote request that another form collected, so the form on your site does not have to be the built-in one. It is described in [docs/integrations.md](docs/integrations.md), with the hidden input that carries the visitor's quote list and a complete adapter for a form plugin in about 30 lines.
 
-All of them, with examples, are in [docs/hooks.md](docs/hooks.md).
+### Other forms and Elementor Pro
+
+A request from another form is the same as one of the built-in form: it is checked against your form fields, stored, emailed, and it fires `quote_requests_created`. Three things make that work:
+
+- `quote_requests_submit( $fields, $items, $args )` stores the request and answers with the reference, or with the errors by field. It does not run the spam checks of the built-in form (the signed token and the honeypot), so the calling form is responsible for its own spam protection. The rate limit and all other checks apply.
+- A hidden input named `quote_requests_items`, in any form on any page, is filled by the plugin's script with the visitor's quote list. After a stored request the page fires the browser event `quote_requests:sent`, and the list is emptied.
+- For the Form widget of Elementor Pro there is nothing to code. Add the action "Quote request" under Actions After Submit and give the form fields the IDs `name`, `phone`, `email`, `company`, `region` and `message` (and `consent` for an Acceptance field, `quote_requests_items` for a Hidden field). Errors appear beside the Elementor fields.
+
+With the Elementor action, Elementor still keeps its own copy of each submission, and its Email action sends its own email next to the plugin's. Remove the Email action from the form to avoid two emails. The Elementor V4 atomic form is not supported. The steps, the field IDs and the limits are in [docs/integrations.md](docs/integrations.md#elementor-pro).
+
+Each request records what sent it (`form`, `elementor`, or the label your code gives), shown as "Source" with the visitor details of the request.
 
 ## Notes for site owners
 

@@ -74,6 +74,19 @@ final class ClientInfoTest extends TestCase {
 		$this->assertSame( '', Client_Info::referrer( 'javascript:alert(1)', $home ) );
 	}
 
+	public function test_page_is_the_path_of_an_http_or_https_address_on_the_host_of_the_site(): void {
+		$home = 'https://www.example.com';
+		$this->assertSame( '/contact/?a=1', Client_Info::page( 'https://www.example.com/contact/?a=1', $home ) );
+		$this->assertSame( '/contact/', Client_Info::page( ' HTTP://www.example.com/contact/ ', $home ) );
+		$this->assertSame( '', Client_Info::page( 'https://example.com/contact/', $home ), 'another host, also when it is the same domain' );
+		$this->assertSame( '', Client_Info::page( 'https://evil.example/contact/', $home ) );
+		$this->assertSame( '', Client_Info::page( '//www.example.com/contact/', $home ) );
+		$this->assertSame( '', Client_Info::page( 'ftp://www.example.com/contact/', $home ) );
+		$this->assertSame( '', Client_Info::page( 'not an address', $home ) );
+		$this->assertSame( '', Client_Info::page( array( 'https://www.example.com/' ), $home ) );
+		$this->assertSame( '', Client_Info::page( null, $home ) );
+	}
+
 	public function test_collect_shapes_everything(): void {
 		$c = Client_Info::collect(
 			array( 'REMOTE_ADDR' => '212.30.36.41', 'HTTP_USER_AGENT' => str_repeat( 'A', 900 ), 'HTTP_ACCEPT_LANGUAGE' => 'en-US' ),

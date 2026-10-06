@@ -1,6 +1,8 @@
 # Hooks, template tags and styling
 
-This page lists what you can use from your theme or from a small plugin of your own. Anything that is not listed here is internal and can change between versions.
+This page lists what you can use from your theme or from a small plugin of your own. Anything that is not listed here or in [integrations.md](integrations.md) is internal and can change between versions.
+
+To send quote requests from another form (a form plugin, a popup, your own code), see [integrations.md](integrations.md): the function `quote_requests_submit()`, the hidden input for the quote list and the action for Elementor Pro.
 
 - [`quote_requests_fields`](#quote_requests_fields) (filter): change the fields of the quote form.
 - [`quote_requests_validate`](#quote_requests_validate) (filter): add your own checks to a request.
@@ -138,7 +140,11 @@ do_action( 'quote_requests_created', int $quote_id )
 
 Fires once for each request, after the record is stored and after the plugin has handed the emails to WordPress. A failed email does not stop it, and the record exists whatever your code does. The ID is the post ID of the record.
 
-The action runs while the visitor waits for the answer, so keep it short. Do not let your callback throw: the record already exists, and the visitor would see a failure for a request that was in fact stored. For a call to another service, use a short timeout, or `'blocking' => false` as below.
+The action runs while the visitor waits for the answer, so keep it short. For a call to another service, use a short timeout, or `'blocking' => false` as below.
+
+A callback that fails (it throws an exception or an error) does not fail the request: the record is stored and mailed by then, so the visitor still gets the answer of a sent request. Callbacks that would have run after the failing one do not run for that request. The failure is logged when `WP_DEBUG` is on: one line in the PHP error log names the action, the ID of the request, and the class and message of what was thrown. With `WP_DEBUG` off nothing is written, so catch and log your own errors if you need to know about them on a live site.
+
+The action fires for every stored request, whatever sent it: the built-in form, `quote_requests_submit()` or the Elementor Pro action (see [integrations.md](integrations.md)). The `source` key of the record tells them apart.
 
 To read the record, call `Quote_Requests\Store::get()`. It returns `null` when the ID is not a quote record, or an array with more keys than listed here (for example `crm_state`, which is internal: do not rely on it). The table shows the keys meant for use:
 
@@ -152,6 +158,7 @@ To read the record, call `Quote_Requests\Store::get()`. It returns `null` when t
 | `consent` | `given`, `time`, `text` and `privacy_url`. |
 | `client` | Visitor details such as `ip`, `browser`, `os`, `device`, `language`, `page`, `landing` and `referrer`. Empty when "Store visitor details" is off. |
 | `mail` | The result of each email: `admin` and `customer`, each with a `state` and a `time`. |
+| `source` | What sent the request: `form` for the built-in form, `elementor` for the Elementor Pro action, otherwise the label given to `quote_requests_submit()` (default `other`). A request stored before 0.3 reads as `form`. |
 
 Example: send the request to another service, without waiting for the answer.
 
@@ -219,7 +226,7 @@ The plugin builds two links: `continue`, to the WooCommerce shop page, with the 
 What the plugin does with the list you return:
 
 - A return value that is not an array is ignored: the links stay as the plugin built them.
-- A callback that fails (it throws an exception or an error) is ignored in the same way: the request is already stored, and the visitor gets the links as the plugin built them.
+- A callback that fails (it throws an exception or an error) is ignored in the same way: the request is already stored, and the visitor gets the links as the plugin built them. The failure is logged when `WP_DEBUG` is on, as for [`quote_requests_created`](#quote_requests_created).
 - An entry without a `url` or without a `label` is dropped.
 - A `url` must start with `http://`, `https://` or a single `/` (a path on your site). Anything else, for example `javascript:`, `mailto:` or an address that starts with `//`, is dropped. The address is cleaned with `esc_url_raw()`.
 - A `label` is plain text. HTML is removed, and the text is cut at 100 characters.

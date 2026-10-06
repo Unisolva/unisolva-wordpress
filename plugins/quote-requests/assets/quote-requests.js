@@ -25,7 +25,7 @@
   var session = safeStorage('sessionStorage');
   function now() { return Date.now(); }
   function load() { return L.read(store, now()); }
-  function save(list) { L.write(store, list, now()); refreshLinks(list); refreshButtons(list); }
+  function save(list) { L.write(store, list, now()); refreshLinks(list); refreshButtons(list); fillInputs(document, list); }
   // Works with pretty permalinks (/wp-json/...) and plain ones (?rest_route=/...).
   function restUrl(path, query) { var u = C.rest + path; return query ? u + (u.indexOf('?') === -1 ? '?' : '&') + query : u; }
   function fmt(s, v) { return String(s || '').replace('%d', v).replace('%s', v); }
@@ -112,6 +112,47 @@
     var root = document.querySelector('[data-qr-page]');
     if (root && store) quotePage(root);
   });
+
+  // The quote list for other forms. Every hidden input named quote_requests_items, in any form of the page, holds the
+  // list as JSON: when the page loads, when the list changes, when such an input is added later (a popup), after a
+  // form is reset and just before a form is sent.
+  function fillInputs(scope, list) {
+    if (!scope || !scope.querySelectorAll || typeof L.fillInputs !== 'function') return;
+    L.fillInputs(scope.querySelectorAll(L.ITEMS_SELECTOR), list || load());
+  }
+  function hasInput(node) {
+    return !!node && node.nodeType === 1 && ((node.matches && node.matches(L.ITEMS_SELECTOR)) || !!node.querySelector(L.ITEMS_SELECTOR));
+  }
+  // A form with the list in it was sent: the list is used up.
+  document.addEventListener('quote_requests:sent', function () { save(L.empty(now())); });
+  // Elementor Pro's Form widget announces a sent form with the jQuery event "submit_success", which only reaches
+  // listeners added through jQuery. jQuery may load after this script, so the listener is added when it is there.
+  var jqBound = false;
+  function bindJquery() {
+    var jq = window.jQuery;
+    if (jqBound || !jq || !jq.fn || typeof jq.fn.on !== 'function') return;
+    jqBound = true;
+    jq(document).on('submit_success', function (e) {
+      if (hasInput(e && e.target)) document.dispatchEvent(new CustomEvent('quote_requests:sent'));
+    });
+  }
+  document.addEventListener('submit', function (e) { bindJquery(); fillInputs(e.target); }, true);
+  // A reset puts the input back to the value in the markup; the list comes back once the reset is done.
+  document.addEventListener('reset', function (e) { if (hasInput(e.target)) setTimeout(function () { fillInputs(document); }, 0); });
+  window.addEventListener('load', bindJquery);
+  function watchInputs() {
+    bindJquery();
+    fillInputs(document);
+    if (typeof MutationObserver !== 'function' || typeof L.fillInputs !== 'function') return;
+    new MutationObserver(function (records) {
+      for (var i = 0; i < records.length; i++) {
+        for (var j = 0; j < records[i].addedNodes.length; j++) {
+          if (hasInput(records[i].addedNodes[j])) { fillInputs(document); return; }
+        }
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchInputs); else watchInputs();
 
   function quotePage(root) {
     var listEl = root.querySelector('[data-qr-list]');
@@ -341,7 +382,7 @@
       tokenReady.then(function () { return send(false); }).then(function (res) {
         button.disabled = false; button.textContent = T.send;
         if (res.status === 201 && res.body.ok) {
-          L.write(store, L.empty(now()), now()); refreshLinks(load()); refreshButtons(load());
+          save(L.empty(now())); // The list is used up: the header link, the buttons and the inputs of other forms follow.
           doneEl.innerHTML = '';
           var h = document.createElement('h2'); h.className = 'qr-done__title'; h.textContent = res.body.thanks; doneEl.appendChild(h);
           var p = document.createElement('p'); p.textContent = fmt(T.yourRef, res.body.ref); doneEl.appendChild(p);

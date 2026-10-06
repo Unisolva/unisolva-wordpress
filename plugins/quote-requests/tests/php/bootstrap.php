@@ -68,6 +68,14 @@ function wc_get_page_permalink( $page ) { return wc_get_page_id( $page ) > 0 ? h
 $GLOBALS['qr_test_shop_status'] = 'publish';
 function get_post_status( $post = null ) { return $GLOBALS['qr_test_shop_page'] > 0 && (int) $post === (int) $GLOBALS['qr_test_shop_page'] ? $GLOBALS['qr_test_shop_status'] : false; }
 function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
+// The key the form token and the rate limit counters are signed with.
+function wp_salt( $scheme = 'auth' ) { return 'test-salt-' . $scheme; }
+// The post types that are registered: none unless a test lists them in $GLOBALS['qr_test_post_types'].
+$GLOBALS['qr_test_post_types'] = array();
+function post_type_exists( $post_type ) { return in_array( $post_type, $GLOBALS['qr_test_post_types'], true ); }
+// How often an action has run: never unless a test sets $GLOBALS['qr_test_did_actions'][ $hook ].
+$GLOBALS['qr_test_did_actions'] = array();
+function did_action( $hook ) { return (int) ( $GLOBALS['qr_test_did_actions'][ $hook ] ?? 0 ); }
 
 spl_autoload_register(
 	static function ( $class ) {
@@ -79,14 +87,20 @@ spl_autoload_register(
 	}
 );
 
+require dirname( __DIR__, 2 ) . '/includes/functions.php'; // The global functions: quote_requests_submit() and the others.
+
 function is_email( $email ) { return filter_var( $email, FILTER_VALIDATE_EMAIL ) ? $email : false; }
 function absint( $n ) { return abs( (int) $n ); }
 
 $GLOBALS['qr_test_filters'] = array();
+// The hooks that are running, as WordPress lists them. As in WordPress, a hook whose callback throws stays in the list.
+$GLOBALS['wp_current_filter'] = array();
 function apply_filters( $hook, $value, ...$args ) {
+	$GLOBALS['wp_current_filter'][] = $hook;
 	foreach ( $GLOBALS['qr_test_filters'][ $hook ] ?? array() as $callback ) {
 		$value = $callback( $value, ...$args );
 	}
+	array_pop( $GLOBALS['wp_current_filter'] );
 	return $value;
 }
 /** Registers a callback for apply_filters() below. Priority and the accepted argument count are not modelled: every callback gets every argument. */
@@ -97,9 +111,11 @@ function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 /** Actions share the list of the filters, as they do in WordPress. */
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { return add_filter( $hook, $callback, $priority, $accepted_args ); }
 function do_action( $hook, ...$args ) {
+	$GLOBALS['wp_current_filter'][] = $hook;
 	foreach ( $GLOBALS['qr_test_filters'][ $hook ] ?? array() as $callback ) {
 		$callback( ...$args );
 	}
+	array_pop( $GLOBALS['wp_current_filter'] );
 }
 $GLOBALS['qr_test_settings_errors'] = array();
 /** Records what the settings screen would show; the message is printed there as HTML. */

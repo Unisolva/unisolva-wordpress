@@ -79,3 +79,46 @@ test('corrupt or blocked storage never throws', () => {
   assert.equal(L.write(throwing, L.empty(NOW), NOW), false);
   assert.deepEqual(L.read(null, NOW).items, []);
 });
+
+// ---- The quote list for other forms: hidden inputs named quote_requests_items. ----
+
+test('itemsJson is the list as the server reads it', () => {
+  let l = L.add(L.add(L.empty(NOW), 12, 3), 7);
+  assert.equal(L.itemsJson(l), '[{"id":12,"qty":3},{"id":7,"qty":1}]');
+  assert.equal(L.itemsJson(L.empty(NOW)), '[]');
+});
+
+test('itemsJson of anything that is not a list is an empty list, never an error', () => {
+  [null, undefined, 'x', 5, {}, { items: 'x' }, { items: null }].forEach(v => assert.equal(L.itemsJson(v), '[]'));
+  assert.equal(L.itemsJson({ items: [{ id: 'a', qty: 1 }, null, { id: 4, qty: '2' }, { id: 5, qty: 0 }] }), '[{"id":4,"qty":2},{"id":5,"qty":1}]');
+});
+
+test('isItemsInput knows the plain name and the name a form builder wraps it in', () => {
+  assert.equal(L.ITEMS_INPUT, 'quote_requests_items');
+  ['quote_requests_items', 'form_fields[quote_requests_items]', 'data[fields][quote_requests_items]'].forEach(n => assert.equal(L.isItemsInput(n), true, n));
+  ['', 'items', 'quote_requests_items[]', 'my_quote_requests_items', 'quote_requests_items_2', 'form_fields[quote_requests_items][0]', null, undefined, 5].forEach(n => assert.equal(L.isItemsInput(n), false, String(n)));
+});
+
+test('the selector finds hidden inputs by both forms of the name', () => {
+  assert.equal(L.ITEMS_SELECTOR, 'input[type="hidden"][name="quote_requests_items"],input[type="hidden"][name$="[quote_requests_items]"]');
+});
+
+test('fillInputs writes the list into every input and reports how many changed', () => {
+  const l = L.add(L.empty(NOW), 12, 3);
+  const inputs = [{ name: 'quote_requests_items', value: '' }, { name: 'form_fields[quote_requests_items]', value: 'old' }, { name: 'quote_requests_items', value: '[{"id":12,"qty":3}]' }];
+  assert.equal(L.fillInputs(inputs, l), 2);
+  inputs.forEach(i => assert.equal(i.value, '[{"id":12,"qty":3}]'));
+  assert.equal(L.fillInputs(inputs, l), 0);
+  assert.equal(L.fillInputs(inputs, L.empty(NOW)), 3);
+  inputs.forEach(i => assert.equal(i.value, '[]'));
+});
+
+test('fillInputs takes an array-like and skips what is not an items input', () => {
+  const other = { name: 'email', value: 'a@example.com' };
+  const nodeList = { 0: { name: 'quote_requests_items', value: '' }, 1: other, 2: null, length: 3 };
+  assert.equal(L.fillInputs(nodeList, L.add(L.empty(NOW), 1)), 1);
+  assert.equal(nodeList[0].value, '[{"id":1,"qty":1}]');
+  assert.equal(other.value, 'a@example.com');
+  assert.equal(L.fillInputs(null, L.empty(NOW)), 0);
+  assert.equal(L.fillInputs(undefined, L.empty(NOW)), 0);
+});

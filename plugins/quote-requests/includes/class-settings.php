@@ -271,7 +271,7 @@ final class Settings {
 			return $text;
 		}
 		/* translators: %s: site name */
-		return sprintf( __( 'I agree that %s may use these details to reply to my quote request, as described in the privacy policy.', 'quote-requests' ), get_bloginfo( 'name' ) );
+		return sprintf( __( 'I agree that %s may use these details to reply to my quote request, as described in the privacy policy.', 'quote-requests' ), self::site_name() ); // Plain text: the form escapes it, and the record stores what the visitor read.
 	}
 
 	public static function region_country(): string {

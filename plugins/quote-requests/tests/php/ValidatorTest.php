@@ -714,6 +714,32 @@ final class ValidatorTest extends TestCase {
 		$this->assertSame( 10, $r['dropped'] );
 	}
 
+	public function test_items_drop_a_row_whose_id_or_quantity_is_not_a_scalar(): void {
+		$looked = array();
+		$lookup = static function ( int $id ) use ( &$looked ) {
+			$looked[] = $id;
+			return array( 'product_id' => $id, 'sku' => '', 'name' => 'P' . $id, 'family' => '' );
+		};
+		$result = Validator::items(
+			array(
+				array( 'id' => array( 5 ), 'qty' => 1 ),
+				array( 'id' => new stdClass(), 'qty' => 1 ),
+				array( 'id' => null, 'qty' => 1 ),
+				array( 'id' => 6, 'qty' => array( 2 ) ),
+				array( 'id' => 7, 'qty' => new stdClass() ),
+				array( 'id' => 8, 'qty' => null ),
+				array( 'id' => new ArrayObject( array( 9 ) ), 'qty' => new ArrayObject() ),
+				array( 'id' => 10, 'qty' => 2 ),
+				array( 'id' => '11' ),
+			),
+			$lookup
+		);
+		$this->assertSame( array( 10, 11 ), $looked, 'only the rows with a scalar id and quantity reach the product lookup' );
+		$this->assertSame( array( 10, 11 ), array_column( $result['items'], 'product_id' ) );
+		$this->assertSame( array( 2, 1 ), array_column( $result['items'], 'qty' ), 'a row without a quantity still counts as one' );
+		$this->assertSame( 7, $result['dropped'] );
+	}
+
 	public function test_phone_pasted_with_invisible_direction_marks_is_accepted(): void {
 		foreach ( array( "\u{202A}+1 555 010 0199\u{202C}", "\u{200E}+15550100199", "\u{2066}5550100199\u{2069}" ) as $pasted ) {
 			$raw          = $this->valid();
@@ -837,5 +863,106 @@ final class ValidatorTest extends TestCase {
 
 		$raw['message'] = 'Three doors and two windows.';
 		$this->assertSame( array(), Validator::contact( $raw, $this->cfg() )['errors'] );
+	}
+
+	// ---- The quote list as a hidden input carries it. ----
+
+	public function test_items_json_is_read_as_a_list_of_id_and_qty(): void {
+		$this->assertSame(
+			array(
+				array(
+					'id'  => 12,
+					'qty' => 3,
+				),
+				array(
+					'id'  => 7,
+					'qty' => 1,
+				),
+			),
+			Validator::items_from_json( '[{"id":12,"qty":3},{"id":"7","qty":"1"}]' )
+		);
+	}
+
+	public function test_items_json_with_slashes_is_read_too(): void {
+		$json = '[{"id":12,"qty":3}]';
+		$want = array(
+			array(
+				'id'  => 12,
+				'qty' => 3,
+			),
+		);
+		$this->assertSame( $want, Validator::items_from_json( addslashes( $json ) ), 'as $_POST holds it in WordPress' );
+		$this->assertSame( $want, Validator::items_from_json( "  $json\n" ) );
+		$this->assertSame( $want, Validator::items_from_json( json_decode( $json, true ) ), 'a list that is already decoded' );
+	}
+
+	#[DataProvider( 'junk_items' )]
+	public function test_items_json_that_is_junk_is_an_empty_list( $junk ): void {
+		$this->assertSame( array(), Validator::items_from_json( $junk ) );
+	}
+
+	public static function junk_items(): array {
+		return array(
+			'empty string'      => array( '' ),
+			'not JSON'          => array( 'id=12&qty=3' ),
+			'broken JSON'       => array( '[{"id":12' ),
+			'a number'          => array( '12' ),
+			'a string'          => array( '"12"' ),
+			'null'              => array( 'null' ),
+			'an object'         => array( '{"id":12,"qty":3}' ),
+			'a list of numbers' => array( '[12,7]' ),
+			'no id'             => array( '[{"qty":3}]' ),
+			'nested too deep'   => array( '[[{"id":12,"qty":3}]]' ),
+			'PHP null'          => array( null ),
+			'PHP integer'       => array( 12 ),
+			'PHP object'        => array( new stdClass() ),
+			'PHP true'          => array( true ),
+			'far too long'      => array( '[' . str_repeat( '{"id":1,"qty":1},', 5000 ) . '{"id":1,"qty":1}]' ),
+		);
+	}
+
+	public function test_items_json_drops_rows_with_wrong_types_and_keeps_the_rest(): void {
+		$json = '[{"id":0,"qty":1},{"id":-4,"qty":1},{"id":"abc","qty":1},{"id":1.5,"qty":1},{"id":true,"qty":1},{"id":[5],"qty":1},{"id":null},"x",7,null,{"id":5,"qty":2}]';
+		$this->assertSame(
+			array(
+				array(
+					'id'  => 5,
+					'qty' => 2,
+				),
+			),
+			Validator::items_from_json( $json )
+		);
+	}
+
+	public function test_items_json_brings_a_quantity_into_range(): void {
+		$got = Validator::items_from_json( '[{"id":1},{"id":2,"qty":0},{"id":3,"qty":-5},{"id":4,"qty":"many"},{"id":5,"qty":[2]},{"id":6,"qty":123456},{"id":7,"qty":2.9},{"id":8,"qty":null}]' );
+		$this->assertSame( array( 1, 2, 3, 4, 5, 6, 7, 8 ), array_column( $got, 'id' ) );
+		$this->assertSame( array( 1, 1, 1, 1, 1, Validator::MAX_QTY, 1, 1 ), array_column( $got, 'qty' ) );
+	}
+
+	public function test_items_json_keeps_at_most_the_maximum_of_lines(): void {
+		$rows = array();
+		for ( $i = 1; $i <= Validator::MAX_LINES + 10; $i++ ) {
+			$rows[] = array(
+				'id'  => $i,
+				'qty' => 1,
+			);
+		}
+		$got = Validator::items_from_json( json_encode( $rows ) );
+		$this->assertCount( Validator::MAX_LINES, $got );
+		$this->assertSame( Validator::MAX_LINES, end( $got )['id'] );
+	}
+
+	public function test_the_global_function_reads_the_items_the_same_way(): void {
+		$this->assertSame(
+			array(
+				array(
+					'id'  => 12,
+					'qty' => 3,
+				),
+			),
+			quote_requests_parse_items( '[{\"id\":12,\"qty\":3}]' )
+		);
+		$this->assertSame( array(), quote_requests_parse_items( 'junk' ) );
 	}
 }
