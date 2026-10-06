@@ -350,6 +350,18 @@
             res.body.items.forEach(function (it) { var li = document.createElement('li'); li.textContent = it.name + ' × ' + it.qty; ul.appendChild(li); });
             doneEl.appendChild(ul);
           }
+          // The same markup as Quote_Page::done_panel() prints for a visitor without the script.
+          if (res.body.copy_sent === true && T.copySent) {
+            var note = document.createElement('p'); note.className = 'qr-done__note'; note.textContent = T.copySent; doneEl.appendChild(note);
+          }
+          var links = typeof L.safeLinks === 'function' ? L.safeLinks(res.body.links) : [];
+          if (links.length) {
+            var actions = document.createElement('p'); actions.className = 'qr-done__actions';
+            links.forEach(function (link, n) {
+              var a = document.createElement('a'); a.className = n === 0 ? 'qr-done__primary' : 'qr-done__secondary'; a.href = link.url; a.textContent = link.label; actions.appendChild(a);
+            });
+            doneEl.appendChild(actions);
+          }
           body.hidden = true; doneEl.hidden = false; doneEl.focus();
           doneEl.scrollIntoView({ block: 'start' });
           return;

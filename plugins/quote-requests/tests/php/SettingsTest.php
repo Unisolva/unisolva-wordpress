@@ -502,6 +502,131 @@ final class SettingsTest extends TestCase {
 		$this->assertSame( array( 'SA' ), $out['region_countries'] );
 	}
 
+	/** A settings option as 0.2.0 stored it: every key of that version, none of the keys 0.2.1 added. */
+	private function stored_by_0_2_0(): array {
+		return array(
+			'recipients'            => array( 'sales@example.com' ),
+			'customer_confirmation' => true,
+			'subject_prefix'        => 'New Quote Request',
+			'quote_page'            => 12,
+			'privacy_page'          => 3,
+			'fields'                => Fields::defaults(),
+			'contact_rule'          => 'phone',
+			'require_consent'       => true,
+			'region_mode'           => 'single',
+			'region_country'        => 'US',
+			'region_countries'      => array(),
+			'region_outside'        => true,
+			'consent_text'          => '',
+			'button_label'          => 'Add to quote',
+			'button_added_label'    => 'In your quote (%d)',
+			'empty_text'            => 'No products yet.',
+			'thanks_text'           => 'Thank you, %name%.',
+			'fallback_contact'      => '',
+			'hide_prices'           => true,
+			'remove_add_to_cart'    => true,
+			'redirect_cart'         => false,
+			'auto_button_single'    => true,
+			'auto_button_loop'      => true,
+			'retention_months'      => 24,
+			'store_client'          => true,
+			'trust_proxy'           => false,
+			'rate_limit'            => 5,
+		);
+	}
+
+	public function test_the_thanks_settings_have_their_defaults_on_a_fresh_install(): void {
+		$defaults = Settings::defaults();
+		$this->assertTrue( $defaults['thanks_links'] );
+		$this->assertSame( 'Continue browsing products', $defaults['thanks_continue_label'] );
+		$this->assertSame( 'Back to home page', $defaults['thanks_home_label'] );
+		$this->assertTrue( Settings::get( 'thanks_links' ) );
+	}
+
+	public function test_an_option_stored_by_0_2_0_gets_the_thanks_defaults_without_a_data_upgrade(): void {
+		$stored = $this->stored_by_0_2_0();
+		$this->assertArrayNotHasKey( 'thanks_links', $stored );
+		qr_test_set_option( Settings::OPTION, $stored );
+		$all = Settings::all();
+		$this->assertTrue( $all['thanks_links'] );
+		$this->assertSame( 'Continue browsing products', $all['thanks_continue_label'] );
+		$this->assertSame( 'Back to home page', $all['thanks_home_label'] );
+		$this->assertSame( 'New Quote Request', $all['subject_prefix'], 'what 0.2.0 stored is kept' );
+		$this->assertTrue( $all['hide_prices'] );
+		$this->assertSame( $stored, $GLOBALS['qr_test_options'][ Settings::OPTION ], 'reading writes nothing back' );
+	}
+
+	public function test_stored_thanks_settings_are_used_and_an_emptied_label_falls_back(): void {
+		qr_test_set_option(
+			Settings::OPTION,
+			array_merge(
+				$this->stored_by_0_2_0(),
+				array(
+					'thanks_links'          => 0,
+					'thanks_continue_label' => 'See all products',
+					'thanks_home_label'     => '   ',
+				)
+			)
+		);
+		$this->assertFalse( Settings::get( 'thanks_links' ) );
+		$this->assertSame( 'See all products', Settings::get( 'thanks_continue_label' ) );
+		$this->assertSame( 'Back to home page', Settings::get( 'thanks_home_label' ), 'an emptied label is the default again' );
+	}
+
+	public function test_sanitize_saves_the_thanks_settings_a_post_carries(): void {
+		$out = Settings::sanitize(
+			array(
+				'_form'                 => Settings::FORM,
+				'recipients'            => 'sales@example.com',
+				'thanks_links'          => '0',
+				'thanks_continue_label' => " See <b>all</b>\tproducts ",
+				'thanks_home_label'     => '',
+			)
+		);
+		$this->assertFalse( $out['thanks_links'] );
+		$this->assertSame( 'See all products', $out['thanks_continue_label'], 'cleaned like the other texts' );
+		$this->assertSame( '', $out['thanks_home_label'] );
+		qr_test_set_option( Settings::OPTION, $out );
+		$this->assertSame( 'Back to home page', Settings::get( 'thanks_home_label' ), 'saved empty, read as the default' );
+
+		$out = Settings::sanitize(
+			array(
+				'recipients'   => 'sales@example.com',
+				'thanks_links' => '1',
+			)
+		);
+		$this->assertTrue( $out['thanks_links'] );
+	}
+
+	public function test_a_post_without_the_thanks_settings_keeps_them(): void {
+		qr_test_set_option(
+			Settings::OPTION,
+			array_merge(
+				$this->stored_by_0_2_0(),
+				array(
+					'thanks_links'          => false,
+					'thanks_continue_label' => 'See all products',
+					'thanks_home_label'     => 'Start page',
+				)
+			)
+		);
+		// The settings form of 0.2.0, left open in a browser tab during the update: its marker, none of the new controls.
+		$out = Settings::sanitize(
+			array(
+				'_form'      => Settings::FORM,
+				'recipients' => 'sales@example.com',
+			)
+		);
+		$this->assertFalse( $out['thanks_links'] );
+		$this->assertSame( 'See all products', $out['thanks_continue_label'] );
+		$this->assertSame( 'Start page', $out['thanks_home_label'] );
+
+		qr_test_set_option( Settings::OPTION, $this->stored_by_0_2_0() );
+		$out = Settings::sanitize( $this->old_form_post() );
+		$this->assertTrue( $out['thanks_links'], 'never stored and not posted: stays on' );
+		$this->assertSame( 'Continue browsing products', $out['thanks_continue_label'] );
+	}
+
 	public function test_form_rows_are_sorted_and_cleaned_before_they_are_normalized(): void {
 		qr_test_set_option( Settings::OPTION, array(
 			'contact_rule' => 'either',

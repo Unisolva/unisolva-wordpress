@@ -4,7 +4,7 @@ Tags: request a quote, quote, catalog mode, woocommerce, b2b
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.2.0
+Stable tag: 0.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,7 @@ Quote Requests turns a WooCommerce catalog into a quote request site.
 * Regions for any country: a list where WooCommerce knows the regions of the country, a line of text where it does not. One country, or the visitor chooses.
 * Every request is saved before any email is sent, so a mail problem never loses a request.
 * Team notification with Reply-To set to the customer, optional customer confirmation.
+* After sending, the visitor gets links to keep browsing: the shop page and the home page, with labels you set.
 * Catalog mode: hide prices, remove add to cart, redirect cart and checkout to the quote page.
 * Works without JavaScript, works with page caching, accessible (labels, inline errors, 44 px targets).
 * Spam protection without third-party services: signed form token, honeypot, per-IP rate limit.
@@ -62,6 +63,13 @@ Use the shortcode `[quote_requests_link]` or the template tag `quote_requests_li
 
 == Changelog ==
 
+= 0.2.1 =
+* Added: links under the thank-you text after a request is sent: the shop page (as a button) and the home page. A switch and two labels on the settings screen, under Texts. On by default.
+* Added: the line "We sent a copy of this request to your email address." after a request whose customer confirmation was handed to the mail system.
+* Added: filter `quote_requests_thanks_links` to change, reorder, add or remove the links.
+* Changed: the subject prefix setting applies to the team email only. The customer's copy always starts its subject with the site name, and its last link shows the site name.
+* Fixed: a site title with characters such as & or an apostrophe no longer appears with HTML entities in email subjects.
+
 = 0.2.0 =
 * Added: configurable form fields (rename, reorder, hide, require, add up to 20 of your own) with seven field types.
 * Added: contact rule (phone, email, either or both) and an optional consent box.
@@ -87,6 +95,9 @@ Use the shortcode `[quote_requests_link]` or the template tag `quote_requests_li
 * First release.
 
 == Upgrade Notice ==
+
+= 0.2.1 =
+No data upgrade. After a request is sent the visitor now sees links to the shop page and the home page; turn them off under Texts on the settings screen if you do not want them. If your quote page is cached, purge the cache so visitors get the new script and style.
 
 = 0.2.0 =
 Updating from 0.1 converts your settings and stored requests on the first page load after the update. Back up your database first. To postpone the conversion, define QUOTE_REQUESTS_HOLD_UPGRADE in wp-config.php.

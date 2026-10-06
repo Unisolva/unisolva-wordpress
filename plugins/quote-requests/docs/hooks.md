@@ -5,6 +5,7 @@ This page lists what you can use from your theme or from a small plugin of your 
 - [`quote_requests_fields`](#quote_requests_fields) (filter): change the fields of the quote form.
 - [`quote_requests_validate`](#quote_requests_validate) (filter): add your own checks to a request.
 - [`quote_requests_created`](#quote_requests_created) (action): run code after a request is stored.
+- [`quote_requests_thanks_links`](#quote_requests_thanks_links) (filter): change the links shown after a request is sent.
 - [`quote_requests_legacy_order_statuses`](#quote_requests_legacy_order_statuses) (filter): keep or drop three old quote order statuses.
 - [`quote_requests_show_crm_state`](#quote_requests_show_crm_state) (filter): show the CRM state of requests in the admin.
 - [`QUOTE_REQUESTS_HOLD_UPGRADE`](#quote_requests_hold_upgrade) (constant): postpone the data upgrade after an update.
@@ -195,6 +196,74 @@ add_action(
 );
 ```
 
+## `quote_requests_thanks_links`
+
+```php
+apply_filters( 'quote_requests_thanks_links', array $links, array $quote ): array
+```
+
+Changes the links the visitor sees under the thank-you text after a request is sent. The same links are shown with and without JavaScript.
+
+`$links` is a list. Each entry is an array with these keys:
+
+| Key | Meaning |
+|---|---|
+| `key` | A name for the link, so your code can find it. The built-in links are `continue` and `home`. |
+| `url` | Where the link goes. |
+| `label` | The text of the link. |
+
+The plugin builds two links: `continue`, to the WooCommerce shop page, with the label from the settings, and `home`, to the home page. A store without a published shop page gets only `home`. The first link of the list is shown as a button, the others as text links.
+
+`$quote` is the request that was just stored, as `Quote_Requests\Store::get()` returns it. Its keys are listed under [`quote_requests_created`](#quote_requests_created).
+
+What the plugin does with the list you return:
+
+- A return value that is not an array is ignored: the links stay as the plugin built them.
+- A callback that fails (it throws an exception or an error) is ignored in the same way: the request is already stored, and the visitor gets the links as the plugin built them.
+- An entry without a `url` or without a `label` is dropped.
+- A `url` must start with `http://`, `https://` or a single `/` (a path on your site). Anything else, for example `javascript:`, `mailto:` or an address that starts with `//`, is dropped. The address is cleaned with `esc_url_raw()`.
+- A `label` is plain text. HTML is removed, and the text is cut at 100 characters.
+- At most 4 links are shown. Further ones are left out.
+- A `key` keeps lowercase letters, digits, underscores and hyphens. A link without one gets the key `link`.
+
+Things to know:
+
+- The filter runs once for each stored request, while the visitor waits for the answer, after the emails and after the `quote_requests_created` action. Keep it short.
+- With "Show links after a request is sent" turned off on the settings screen there are no links, and the filter does not run.
+- To remove every link from code, return an empty array.
+
+Example: offer a catalogue first when the request named no product, and rename the home page link.
+
+```php
+add_filter(
+    'quote_requests_thanks_links',
+    static function ( array $links, array $quote ): array {
+        // A request without products: offer the catalogue first.
+        if ( empty( $quote['items'] ) ) {
+            array_unshift(
+                $links,
+                array(
+                    'key'   => 'catalogue',
+                    'url'   => home_url( '/catalogue/' ),
+                    'label' => 'Browse our catalogue',
+                )
+            );
+        }
+
+        // Rename the link to the home page.
+        foreach ( $links as $i => $link ) {
+            if ( 'home' === ( $link['key'] ?? '' ) ) {
+                $links[ $i ]['label'] = 'Back to the start page';
+            }
+        }
+
+        return $links;
+    },
+    10,
+    2
+);
+```
+
 ## `quote_requests_legacy_order_statuses`
 
 ```php
@@ -279,7 +348,7 @@ if ( function_exists( 'quote_requests_link' ) ) {
 
 ## CSS custom properties
 
-The quote page, the button and the link read these custom properties. Set them on `:root`, on `body` or on a wrapper element in your theme's CSS to match your colours. Each one has a default.
+The quote page, the button, the header link and the links shown after a request is sent read these custom properties. Set them on `:root`, on `body` or on a wrapper element in your theme's CSS to match your colours. Each one has a default.
 
 | Property | Used for | Default |
 |---|---|---|

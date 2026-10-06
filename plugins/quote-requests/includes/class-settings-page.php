@@ -324,7 +324,7 @@ final class Settings_Page {
 		echo '<h2>' . esc_html__( 'Notifications', 'quote-requests' ) . '</h2><table class="form-table" role="presentation">';
 		echo '<tr><th scope="row"><label for="qr-s-recipients">' . esc_html__( 'Recipients', 'quote-requests' ) . '</label></th><td><textarea class="large-text" rows="3" id="qr-s-recipients" name="' . esc_attr( self::name( 'recipients' ) ) . '">' . esc_textarea( implode( "\n", $s['recipients'] ) ) . '</textarea><p class="description">' . esc_html__( 'One email address per line.', 'quote-requests' ) . '</p></td></tr>';
 		self::check( 'customer_confirmation', __( 'Send customer confirmation', 'quote-requests' ), $s['customer_confirmation'] );
-		self::text( 'subject_prefix', __( 'Email subject prefix', 'quote-requests' ), $s['subject_prefix'], __( 'Empty means the site name.', 'quote-requests' ) );
+		self::text( 'subject_prefix', __( 'Subject prefix of the team email', 'quote-requests' ), $s['subject_prefix'], __( 'Empty means the site name. The customer\'s copy always carries the site name.', 'quote-requests' ) );
 		echo '</table>';
 
 		echo '<h2>' . esc_html__( 'Pages', 'quote-requests' ) . '</h2><table class="form-table" role="presentation">';
@@ -373,6 +373,9 @@ final class Settings_Page {
 		self::text( 'button_added_label', __( 'Button label when added (%d = quantity)', 'quote-requests' ), $s['button_added_label'] );
 		self::text( 'empty_text', __( 'Empty list text', 'quote-requests' ), $s['empty_text'] );
 		self::text( 'thanks_text', __( 'Thank-you text (%name% = customer name)', 'quote-requests' ), $s['thanks_text'] );
+		self::check( 'thanks_links', __( 'Show links after a request is sent', 'quote-requests' ), $s['thanks_links'], __( 'Under the thank-you text: a link to the shop page, when the store has one, and a link to the home page.', 'quote-requests' ) );
+		self::text( 'thanks_continue_label', __( 'Label of the shop page link', 'quote-requests' ), $s['thanks_continue_label'] );
+		self::text( 'thanks_home_label', __( 'Label of the home page link', 'quote-requests' ), $s['thanks_home_label'] );
 		self::text( 'fallback_contact', __( 'Failure fallback contact', 'quote-requests' ), $s['fallback_contact'], __( 'Shown when a request cannot be sent, for example an email address and phone number.', 'quote-requests' ) );
 		echo '</table>';
 

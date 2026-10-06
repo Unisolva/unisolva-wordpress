@@ -104,13 +104,22 @@ Where WooCommerce has a list of regions for the country, the visitor picks from 
 
 - Recipients: one address per line.
 - Send customer confirmation: when the visitor gave a valid email address, they get a short email with the reference and the products. It repeats nothing the visitor typed except their name in the greeting.
-- Email subject prefix: empty means the site name.
+- Subject prefix of the team email: the text in brackets at the start of the subject of the team email. Empty means the site name. The customer's copy does not use it: its subject always starts with the site name.
 
 Team emails have the Reply-To header set to the visitor's address.
 
 ### Texts
 
 The button label, the label after a product is added, the text for an empty list, the thank-you text (`%name%` is replaced by the visitor's name), and a fallback contact shown when a request cannot be sent, for example an email address or phone number.
+
+After a request is sent, the visitor sees the thank-you text, the reference and the products, and then:
+
+- Show links after a request is sent: on by default. The visitor gets a link to the shop page of WooCommerce, shown as a button, and a link to the home page. A store without a published shop page gets the home page link alone. Turn it off to show no links.
+- Label of the shop page link: default "Continue browsing products".
+- Label of the home page link: default "Back to home page". An emptied label goes back to its default.
+- When the customer confirmation was handed to the mail system for this request, the visitor also reads "We sent a copy of this request to your email address." The line is left out when the visitor gave no email address, when the confirmation is turned off, or when the mail system refused the message.
+
+To change, add or remove links from code, see the filter `quote_requests_thanks_links` in [docs/hooks.md](docs/hooks.md#quote_requests_thanks_links).
 
 ### Catalog mode and buttons
 
@@ -163,7 +172,7 @@ The plugin adds a suggested section to your privacy policy text (Settings > Priv
 There are three ways, from simple to flexible:
 
 1. Settings. Most sites need nothing more: fields, rules, regions, texts and catalog mode are all set on the settings screen.
-2. Hooks. Filter `quote_requests_fields` changes the form fields from code, filter `quote_requests_validate` adds your own checks, and action `quote_requests_created` runs code after a request is stored, for example to pass it to another system. The constant `QUOTE_REQUESTS_HOLD_UPGRADE` postpones the data upgrade after an update from 0.1.
+2. Hooks. Filter `quote_requests_fields` changes the form fields from code, filter `quote_requests_validate` adds your own checks, action `quote_requests_created` runs code after a request is stored, for example to pass it to another system, and filter `quote_requests_thanks_links` changes the links shown after a request is sent. The constant `QUOTE_REQUESTS_HOLD_UPGRADE` postpones the data upgrade after an update from 0.1.
 3. Template tags, shortcodes and CSS custom properties, to place the buttons and the link and to match your colours.
 
 All of them, with examples, are in [docs/hooks.md](docs/hooks.md).

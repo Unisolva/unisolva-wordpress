@@ -25,7 +25,13 @@ function esc_html__( $text, $domain = null ) { return htmlspecialchars( $text, E
 function esc_html( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' ); }
 function esc_attr( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' ); }
 function esc_url( $url ) { return filter_var( $url, FILTER_SANITIZE_URL ); }
-function sanitize_text_field( $str ) { return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( (string) $str ) ) ); }
+/** Enough of esc_url_raw() for the tests: characters a URL cannot hold are removed. The schemes are checked by the caller. */
+function esc_url_raw( $url, $protocols = null ) { return (string) filter_var( (string) $url, FILTER_SANITIZE_URL ); }
+/** As WordPress does (wp_pre_kses_less_than), a "<" that opens no tag comes back as the entity, with the rest of that tail escaped; "&" stays as typed. */
+function sanitize_text_field( $str ) {
+	$str = preg_replace_callback( '%<[^>]*?((?=<)|>|$)%', static fn( $m ) => false === strpos( $m[0], '>' ) ? htmlspecialchars( $m[0], ENT_QUOTES, 'UTF-8', false ) : $m[0], (string) $str );
+	return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $str ) ) );
+}
 function sanitize_textarea_field( $str ) { return trim( strip_tags( (string) $str ) ); }
 function wp_strip_all_tags( $str ) { return trim( strip_tags( (string) $str ) ); }
 
@@ -50,8 +56,17 @@ function qr_test_reset_options( array $options ) {
 	$GLOBALS['qr_test_option_reads'] = array();
 	Quote_Requests\Settings::flush();
 }
-function get_bloginfo( $show = '' ) { return 'Test Site'; }
+// The site title as WordPress stores it (special characters as HTML entities). A test may set $GLOBALS['qr_test_blogname'].
+function get_bloginfo( $show = '' ) { return $GLOBALS['qr_test_blogname'] ?? 'Test Site'; }
+function wp_specialchars_decode( $text, $quote_style = ENT_NOQUOTES ) { return htmlspecialchars_decode( (string) $text, $quote_style ); }
 function home_url( $path = '' ) { return 'https://example.test' . $path; }
+// The WooCommerce shop page: none unless a test sets $GLOBALS['qr_test_shop_page'] to a page ID.
+$GLOBALS['qr_test_shop_page'] = 0;
+function wc_get_page_id( $page ) { return 'shop' === $page && $GLOBALS['qr_test_shop_page'] > 0 ? (int) $GLOBALS['qr_test_shop_page'] : -1; }
+function wc_get_page_permalink( $page ) { return wc_get_page_id( $page ) > 0 ? home_url( '/' . $page . '/' ) : home_url(); }
+// The status of the shop page: published unless a test sets $GLOBALS['qr_test_shop_status']. Any other post does not exist.
+$GLOBALS['qr_test_shop_status'] = 'publish';
+function get_post_status( $post = null ) { return $GLOBALS['qr_test_shop_page'] > 0 && (int) $post === (int) $GLOBALS['qr_test_shop_page'] ? $GLOBALS['qr_test_shop_status'] : false; }
 function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
 
 spl_autoload_register(

@@ -92,6 +92,7 @@ final class Assets {
 						'failure'     => __( 'Your request could not be sent. Your details are still in the form.', 'quote-requests' ) . ( '' !== trim( $s['fallback_contact'] ) ? ' ' . $s['fallback_contact'] : '' ),
 						/* translators: %s: reference such as Q-2026-0001 */
 						'yourRef'     => __( 'Your reference: %s', 'quote-requests' ),
+						'copySent'    => __( 'We sent a copy of this request to your email address.', 'quote-requests' ),
 						'remove'      => __( 'Remove', 'quote-requests' ),
 						/* translators: %s: product name */
 						'qtyOf'       => __( 'Quantity of %s', 'quote-requests' ),

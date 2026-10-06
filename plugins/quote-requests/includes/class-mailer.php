@@ -153,6 +153,34 @@ final class Mailer {
 		);
 	}
 
+	/**
+	 * What the team email is built with. Its subject starts with the subject prefix of the settings; an empty prefix means the site name.
+	 *
+	 * @param string $admin_url Address of the request in the admin.
+	 */
+	public static function admin_context( string $admin_url ): array {
+		return array(
+			'recipients' => (array) Settings::get( 'recipients' ),
+			'prefix'     => Settings::subject_prefix(),
+			'admin_url'  => $admin_url,
+		);
+	}
+
+	/**
+	 * What the customer's copy is built with. Its subject starts with the site name and its last link shows the site name:
+	 * the subject prefix of the settings belongs to the team email and is not used here.
+	 *
+	 * @param array  $q        The request as Store::get() returns it.
+	 * @param string $site_url Address of the home page.
+	 */
+	public static function customer_context( array $q, string $site_url ): array {
+		return array(
+			'prefix'   => Settings::site_name(),
+			'site_url' => $site_url,
+			'thanks'   => str_replace( '%name%', self::clean( $q['name'] ), (string) Settings::get( 'thanks_text' ) ),
+		);
+	}
+
 	private static function deliver( array $m ): bool {
 		$alt = static function ( $phpmailer ) use ( $m ) {
 			$phpmailer->AltBody = $m['text']; // phpcs:ignore WordPress.NamingConventions.ValidVariableName
@@ -173,25 +201,10 @@ final class Mailer {
 		if ( ! $q ) {
 			return;
 		}
-		$s     = Settings::all();
-		$admin = self::admin_message(
-			$q,
-			array(
-				'recipients' => $s['recipients'],
-				'prefix'     => Settings::subject_prefix(),
-				'admin_url'  => admin_url( 'post.php?post=' . $quote_id . '&action=edit' ),
-			)
-		);
+		$admin = self::admin_message( $q, self::admin_context( admin_url( 'post.php?post=' . $quote_id . '&action=edit' ) ) );
 		Store::set_mail( $quote_id, 'admin', $admin['to'] && self::deliver( $admin ) ? 'handed_over' : 'failed' );
 
-		$customer = $s['customer_confirmation'] ? self::customer_message(
-			$q,
-			array(
-				'prefix'   => Settings::subject_prefix(),
-				'site_url' => home_url( '/' ),
-				'thanks'   => str_replace( '%name%', self::clean( $q['name'] ), $s['thanks_text'] ),
-			)
-		) : null;
+		$customer = Settings::get( 'customer_confirmation' ) ? self::customer_message( $q, self::customer_context( $q, home_url( '/' ) ) ) : null;
 		Store::set_mail( $quote_id, 'customer', null === $customer ? 'skipped' : ( self::deliver( $customer ) ? 'handed_over' : 'failed' ) );
 	}
 }

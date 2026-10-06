@@ -25,10 +25,13 @@ final class Settings {
 	/** Value of the hidden "_form" input of the settings form. It tells a box that is not ticked from a form that has no such box. */
 	public const FORM = '2';
 
-	private const BOOLS = array( 'customer_confirmation', 'require_consent', 'region_outside', 'hide_prices', 'remove_add_to_cart', 'redirect_cart', 'auto_button_single', 'auto_button_loop', 'store_client', 'trust_proxy' );
-	private const TEXTS = array( 'subject_prefix', 'consent_text', 'button_label', 'button_added_label', 'empty_text', 'thanks_text', 'fallback_contact' );
+	private const BOOLS = array( 'customer_confirmation', 'require_consent', 'region_outside', 'hide_prices', 'remove_add_to_cart', 'redirect_cart', 'auto_button_single', 'auto_button_loop', 'store_client', 'trust_proxy', 'thanks_links' );
+	private const TEXTS = array( 'subject_prefix', 'consent_text', 'button_label', 'button_added_label', 'empty_text', 'thanks_text', 'fallback_contact', 'thanks_continue_label', 'thanks_home_label' );
 	private const RULES = array( 'either', 'phone', 'email', 'both' );
 	private const MODES = array( 'single', 'choose' );
+
+	/** The settings 0.2.1 added. Their box and their text boxes are always posted by the form that has them. */
+	private const ADDED_0_2_1 = array( 'thanks_links', 'thanks_continue_label', 'thanks_home_label' );
 
 	public static function defaults(): array {
 		return array(
@@ -50,6 +53,9 @@ final class Settings {
 			'button_added_label'    => __( 'In your quote (%d)', 'quote-requests' ),
 			'empty_text'            => __( 'No products yet. Browse products, or describe what you need below.', 'quote-requests' ),
 			'thanks_text'           => __( 'Thank you, %name%. We will contact you as soon as possible.', 'quote-requests' ),
+			'thanks_links'          => true,
+			'thanks_continue_label' => __( 'Continue browsing products', 'quote-requests' ),
+			'thanks_home_label'     => __( 'Back to home page', 'quote-requests' ),
 			'fallback_contact'      => '',
 			'hide_prices'           => false,
 			'remove_add_to_cart'    => false,
@@ -142,6 +148,8 @@ final class Settings {
 	 * contact rule or a region mode (an older form, for example one left open in a browser tab during an update)
 	 * keeps the current values. The consent box and the country list are read as "not ticked" and "none chosen"
 	 * only when the current form posted (its "_form" marker); otherwise they keep their values too.
+	 * The settings 0.2.1 added (the links after a request is sent and their two labels) keep their values
+	 * whenever the post does not carry them: the form of 0.2.0 has the same marker and none of these controls.
 	 *
 	 * @param mixed $input Posted settings.
 	 */
@@ -171,6 +179,11 @@ final class Settings {
 		}
 		foreach ( self::TEXTS as $t ) {
 			$out[ $t ] = sanitize_text_field( (string) ( $input[ $t ] ?? '' ) );
+		}
+		foreach ( self::ADDED_0_2_1 as $k ) {
+			if ( ! array_key_exists( $k, $input ) ) {
+				$out[ $k ] = $current[ $k ]; // A form without the control (a tab left open during the update) does not change it.
+			}
 		}
 		$out['quote_page']       = absint( $input['quote_page'] ?? 0 );
 		$out['privacy_page']     = absint( $input['privacy_page'] ?? 0 );
@@ -269,8 +282,18 @@ final class Settings {
 		return $c;
 	}
 
+	/** The subject prefix of the team email: the setting, or the site name when it is empty. */
 	public static function subject_prefix(): string {
 		$p = trim( (string) self::get( 'subject_prefix' ) );
-		return '' !== $p ? $p : (string) get_bloginfo( 'name' );
+		return '' !== $p ? $p : self::site_name();
+	}
+
+	/**
+	 * The site name as plain text. WordPress stores the title with & < > and quotes as HTML entities; an email subject is not HTML.
+	 * A site without a title is named by the host of its address, so a subject never starts with "[]".
+	 */
+	public static function site_name(): string {
+		$name = trim( wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES ) );
+		return '' !== $name ? $name : (string) wp_parse_url( home_url(), PHP_URL_HOST );
 	}
 }

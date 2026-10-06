@@ -107,21 +107,26 @@ final class Submission {
 		Mailer::send( $id );
 		do_action( 'quote_requests_created', $id );
 
+		// The page without the script stores this answer and draws the same panel from it (Quote_Page::done_panel()).
+		$quote = Store::get( $id ) ?? array();
 		return array(
 			'status' => 201,
 			'body'   => array(
-				'ok'      => true,
-				'ref'     => Store::get( $id )['ref'],
-				'name'    => $data['name'],
-				'thanks'  => str_replace( '%name%', $data['name'], $settings['thanks_text'] ),
-				'items'   => array_map(
+				'ok'        => true,
+				'ref'       => $quote['ref'] ?? '',
+				'name'      => $data['name'],
+				'thanks'    => str_replace( '%name%', $data['name'], $settings['thanks_text'] ),
+				'items'     => array_map(
 					static fn( $i ) => array(
 						'name' => $i['name'],
 						'qty'  => $i['qty'],
 					),
 					$items['items']
 				),
-				'dropped' => $items['dropped'],
+				'dropped'   => $items['dropped'],
+				'links'     => Thanks::links( $quote ),
+				// Handed to the mailer, which is not the same as delivered. Skipped (no address, or confirmation off) and failed are both false.
+				'copy_sent' => 'handed_over' === ( $quote['mail']['customer']['state'] ?? '' ),
 			),
 		);
 	}

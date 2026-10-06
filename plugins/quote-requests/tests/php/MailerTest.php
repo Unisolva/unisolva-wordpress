@@ -30,6 +30,7 @@ final class MailerTest extends TestCase {
 	protected function tearDown(): void {
 		qr_test_reset_options( array() );
 		$GLOBALS['qr_test_filters'] = array();
+		unset( $GLOBALS['qr_test_blogname'] );
 	}
 
 	/** Stores field definitions: the six system fields plus the given custom ones. */
@@ -106,6 +107,80 @@ final class MailerTest extends TestCase {
 		$this->assertSame( '[Test Site] We received your quote request Q-2026-0007', $c['subject'] );
 		$this->assertStringContainsString( 'Thank you, Ahmed.', $c['html'] );
 		$this->assertStringNotContainsString( '212.30.36.41', $c['html'] );
+	}
+
+	// ---- The subject prefix belongs to the team email; the customer's copy carries the site name. ----
+
+	private function team_subject(): string {
+		return Mailer::admin_message( $this->quote(), Mailer::admin_context( 'https://example.test/wp-admin/post.php?post=5&action=edit' ) )['subject'];
+	}
+
+	private function customer_copy(): array {
+		return Mailer::customer_message( $this->quote(), Mailer::customer_context( $this->quote(), 'https://example.test/' ) );
+	}
+
+	public function test_team_subject_with_a_custom_prefix(): void {
+		qr_test_set_option( Settings::OPTION, array( 'contact_rule' => 'either', 'subject_prefix' => 'New Quote Request', 'recipients' => array( 'sales@example.test' ) ) );
+		$this->assertSame( '[New Quote Request] Quote request Q-2026-0007 from Ahmed Ali (Cairo)', $this->team_subject() );
+		$ctx = Mailer::admin_context( 'https://example.test/wp-admin/post.php?post=5&action=edit' );
+		$this->assertSame( array( 'recipients', 'prefix', 'admin_url' ), array_keys( $ctx ) );
+		$this->assertSame( array( 'sales@example.test' ), $ctx['recipients'] );
+		$this->assertSame( 'https://example.test/wp-admin/post.php?post=5&action=edit', $ctx['admin_url'] );
+	}
+
+	public function test_team_subject_with_an_empty_prefix_carries_the_site_name(): void {
+		foreach ( array( '', '   ' ) as $empty ) {
+			qr_test_set_option( Settings::OPTION, array( 'contact_rule' => 'either', 'subject_prefix' => $empty ) );
+			$this->assertSame( '[Test Site] Quote request Q-2026-0007 from Ahmed Ali (Cairo)', $this->team_subject() );
+		}
+	}
+
+	public function test_the_customer_copy_ignores_the_custom_prefix(): void {
+		qr_test_set_option( Settings::OPTION, array( 'contact_rule' => 'either', 'subject_prefix' => 'New Quote Request', 'thanks_text' => 'Thank you, %name%.' ) );
+		$c = $this->customer_copy();
+		$this->assertSame( '[Test Site] We received your quote request Q-2026-0007', $c['subject'] );
+		$this->assertStringContainsString( '<p><a href="https://example.test/">Test Site</a></p>', $c['html'], 'the link at the end shows the site name' );
+		$this->assertStringContainsString( "\nTest Site https://example.test/\n", $c['text'] );
+		$this->assertStringNotContainsString( 'New Quote Request', $c['subject'] . $c['html'] . $c['text'] );
+		$this->assertStringContainsString( 'Thank you, Ahmed Ali.', $c['text'], 'the greeting is the thank-you text with the cleaned name' );
+		$this->assertSame( array( 'prefix', 'site_url', 'thanks' ), array_keys( Mailer::customer_context( $this->quote(), 'https://example.test/' ) ) );
+	}
+
+	public function test_the_customer_copy_carries_the_site_name_with_an_empty_prefix_too(): void {
+		$this->assertSame( '[Test Site] We received your quote request Q-2026-0007', $this->customer_copy()['subject'] );
+	}
+
+	public function test_a_site_with_a_title_keeps_it_as_the_site_name(): void {
+		$GLOBALS['qr_test_blogname'] = 'Example Shop';
+		$this->assertSame( 'Example Shop', Settings::site_name() );
+		$this->assertSame( '[Example Shop] We received your quote request Q-2026-0007', $this->customer_copy()['subject'] );
+	}
+
+	public function test_a_site_without_a_title_is_named_by_its_host(): void {
+		foreach ( array( '', '   ', "\t\n" ) as $empty ) {
+			$GLOBALS['qr_test_blogname'] = $empty;
+			$this->assertSame( 'example.test', Settings::site_name(), 'the host of home_url()' );
+			$this->assertSame( 'example.test', Settings::subject_prefix(), 'the team email with an empty prefix' );
+			$c = $this->customer_copy();
+			$this->assertSame( '[example.test] We received your quote request Q-2026-0007', $c['subject'], 'never "[] We received"' );
+			$this->assertStringContainsString( '<p><a href="https://example.test/">example.test</a></p>', $c['html'], 'the link at the end has a text' );
+		}
+	}
+
+	public function test_a_site_title_stored_with_entities_reaches_the_subjects_as_plain_text(): void {
+		$GLOBALS['qr_test_blogname'] = 'Fish &amp; Chips&#039; &quot;Shop&quot;'; // What WordPress stores for: Fish & Chips' "Shop".
+		$this->assertSame( 'Fish & Chips\' "Shop"', Settings::site_name() );
+		$this->assertSame( 'Fish & Chips\' "Shop"', Settings::subject_prefix() );
+		$this->assertStringStartsWith( '[Fish & Chips\' "Shop"] Quote request ', $this->team_subject() );
+		$c = $this->customer_copy();
+		$this->assertSame( '[Fish & Chips\' "Shop"] We received your quote request Q-2026-0007', $c['subject'] );
+		$this->assertStringContainsString( '>Fish &amp; Chips&#039; &quot;Shop&quot;</a>', $c['html'], 'escaped once in the HTML part' );
+		$this->assertStringContainsString( "\nFish & Chips' \"Shop\" https://example.test/\n", $c['text'] );
+	}
+
+	public function test_a_prefix_the_owner_typed_is_used_as_typed(): void {
+		qr_test_set_option( Settings::OPTION, array( 'contact_rule' => 'either', 'subject_prefix' => 'Sales &amp; more' ) );
+		$this->assertSame( 'Sales &amp; more', Settings::subject_prefix() );
 	}
 
 	public function test_message_without_items(): void {

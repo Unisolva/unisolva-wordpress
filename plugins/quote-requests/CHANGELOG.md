@@ -2,6 +2,25 @@
 
 All notable changes to Quote Requests are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the version numbers follow [Semantic Versioning](https://semver.org/).
 
+## 0.2.1 - 2026-10-06
+
+### Added
+
+- Next steps after a request is sent. Under the thank-you text the visitor now gets a link to the shop page of WooCommerce, shown as a button, and a link to the home page. A store without a published shop page (none set, or one that is a draft, private or in the trash) gets the home page link alone. Visitors without JavaScript get the same links.
+- Three settings under "Texts": "Show links after a request is sent" (on by default), and the labels of the two links ("Continue browsing products" and "Back to home page"). A site that updates from 0.2.0 gets these defaults; nothing has to be saved again.
+- The line "We sent a copy of this request to your email address." It is shown when the customer confirmation of that request was handed to the mail system, and left out when the visitor gave no email address, when the confirmation is turned off or when the mail system refused the message. "Sent" means handed over, not delivered.
+- The filter `quote_requests_thanks_links`, which changes, reorders, adds or removes the links from code. It is documented with an example in `docs/hooks.md`.
+
+### Changed
+
+- The subject prefix belongs to the team email. The setting is now called "Subject prefix of the team email" and no longer changes the customer's copy: its subject always starts with the site name in brackets, and the link at the end of that email shows the site name. Until now a prefix such as "New Quote Request", chosen for the team inbox, also headed the email the customer received.
+- The answer of the REST route that stores a request has two more keys, `links` and `copy_sent`. The existing keys are unchanged.
+
+### Fixed
+
+- A site title that contains a character such as `&` or an apostrophe appeared with HTML entities (for example `&amp;`) in email subjects and in the plain-text part of the customer's copy. It is now plain text there.
+- A site without a site title is named by the host of its address (for example `example.com`) in email subjects and in the customer's copy, instead of by nothing.
+
 ## 0.2.0 - 2026-10-03
 
 ### Added

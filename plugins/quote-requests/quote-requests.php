@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Quote Requests
  * Description:       Lets visitors collect products into a quote list and send one quote request. Stores every request, emails the sales team, hides prices and replaces the cart with a quote page.
- * Version:           0.2.0
+ * Version:           0.2.1
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Requires Plugins:  woocommerce
@@ -33,7 +33,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'QUOTE_REQUESTS_VERSION', '0.2.0' );
+define( 'QUOTE_REQUESTS_VERSION', '0.2.1' );
 define( 'QUOTE_REQUESTS_FILE', __FILE__ );
 define( 'QUOTE_REQUESTS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'QUOTE_REQUESTS_URL', plugin_dir_url( __FILE__ ) );

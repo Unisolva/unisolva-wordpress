@@ -93,7 +93,10 @@ final class Quote_Page {
 		return (string) ob_get_clean();
 	}
 
-	/** Success panel (no-script result, or filled by the script). */
+	/**
+	 * Success panel (no-script result, or filled by the script). The script builds the same markup from the same
+	 * answer of Submission::process(). An answer that 0.2.0 stored has no "copy_sent" and no "links": no note, no links.
+	 */
 	private static function done_panel( ?array $done ): void {
 		echo '<div class="qr-done" data-qr-done tabindex="-1"' . ( $done ? '' : ' hidden' ) . '>';
 		if ( $done ) {
@@ -106,6 +109,17 @@ final class Quote_Page {
 					echo '<li>' . esc_html( $it['name'] ) . ' &times; ' . (int) $it['qty'] . '</li>';
 				}
 				echo '</ul>';
+			}
+			if ( true === ( $done['copy_sent'] ?? false ) ) {
+				echo '<p class="qr-done__note">' . esc_html__( 'We sent a copy of this request to your email address.', 'quote-requests' ) . '</p>';
+			}
+			$links = Thanks::harden( $done['links'] ?? array() );
+			if ( $links ) {
+				echo '<p class="qr-done__actions">';
+				foreach ( $links as $n => $link ) {
+					echo '<a class="' . ( 0 === $n ? 'qr-done__primary' : 'qr-done__secondary' ) . '" href="' . esc_url( $link['url'] ) . '">' . esc_html( $link['label'] ) . '</a>';
+				}
+				echo '</p>';
 			}
 		}
 		echo '</div>';

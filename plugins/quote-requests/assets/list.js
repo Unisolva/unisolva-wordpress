@@ -23,6 +23,9 @@
   var TTL_MS = 30 * 24 * 3600 * 1000;
   var MAX_LINES = 50;
   var MAX_QTY = 9999;
+  var MAX_LINKS = 4;
+  // An address the thank-you panel may link: http://host, https://host, or one slash that no slash or backslash follows.
+  var LINK_URL = /^(?:https?:\/\/[^\/\\\s]|\/(?![\/\\]))/i;
 
   function toId(id) { var n = parseInt(id, 10); return n > 0 ? n : 0; }
   function toQty(q) { var n = parseInt(q, 10); if (!(n > 0)) n = 1; return Math.min(MAX_QTY, n); }
@@ -91,5 +94,19 @@
       return false;
     }
   }
-  return { KEY: KEY, TTL_MS: TTL_MS, MAX_LINES: MAX_LINES, MAX_QTY: MAX_QTY, empty: empty, read: read, write: write, add: add, setQty: setQty, remove: remove, merge: merge, count: count, qtyOf: qtyOf };
+  // The links of the thank-you panel as the answer of a sent request carries them: [{ key, url, label }].
+  // The server has cleaned them; this is the second look before one becomes an href. Anything that is not a list
+  // (an answer without the key, as 0.2.0 gave) is no links. An address with a space or a control character is
+  // dropped: a browser removes tabs and line breaks from an address before it reads it.
+  function safeLinks(value) {
+    var out = [];
+    if (!Array.isArray(value)) return out;
+    value.forEach(function (l) {
+      if (out.length >= MAX_LINKS || !l || typeof l !== 'object' || typeof l.url !== 'string' || typeof l.label !== 'string') return;
+      if (!LINK_URL.test(l.url) || /[\u0000- \u007f]/.test(l.url) || !l.label.trim()) return;
+      out.push({ key: typeof l.key === 'string' && l.key ? l.key : 'link', url: l.url, label: l.label });
+    });
+    return out;
+  }
+  return { KEY: KEY, TTL_MS: TTL_MS, MAX_LINES: MAX_LINES, MAX_QTY: MAX_QTY, MAX_LINKS: MAX_LINKS, empty: empty, read: read, write: write, add: add, setQty: setQty, remove: remove, merge: merge, count: count, qtyOf: qtyOf, safeLinks: safeLinks };
 });

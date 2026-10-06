@@ -6,7 +6,7 @@ Open-source WordPress and WooCommerce plugins by [Unisolva](https://unisolva.com
 
 | Plugin | Version | What it does | Download |
 |---|---|---|---|
-| [Quote Requests](plugins/quote-requests/) | 0.2.0 | Lets visitors collect WooCommerce products into a quote list and send one quote request. Catalog mode, configurable form fields and regions for any country. | [quote-requests.zip](https://github.com/Unisolva/unisolva-wordpress/releases/download/quote-requests-0.2.0/quote-requests.zip) |
+| [Quote Requests](plugins/quote-requests/) | 0.2.1 | Lets visitors collect WooCommerce products into a quote list and send one quote request. Catalog mode, configurable form fields and regions for any country. | [quote-requests.zip](https://github.com/Unisolva/unisolva-wordpress/releases/download/quote-requests-0.2.1/quote-requests.zip) |
 
 Each plugin lives in its own folder under `plugins/`, with its own README, changelog and tests.
 
